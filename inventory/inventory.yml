@@ -1,0 +1,32 @@
+all:
+  hosts:
+    master-01:
+      ansible_host: 192.168.1.13
+    master-02:
+      ansible_host: 192.168.1.14
+    master-03:
+      ansible_host: 192.168.1.15
+
+    worker-01:
+      ansible_host: 192.168.1.16
+    worker-02:
+      ansible_host: 192.168.1.17
+    worker-03:
+      ansible_host: 192.168.1.18
+
+master:
+  hosts:
+    master-01:
+    master-02:
+    master-03:
+
+worker:
+  hosts:
+    worker-01:
+    worker-02:
+    worker-03:
+
+rke2_cluster:
+  children:
+    master:
+    worker:

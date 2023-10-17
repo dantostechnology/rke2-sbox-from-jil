@@ -1,0 +1,44 @@
+---
+- name: Join Workers
+  when:
+    - ansible_os_family == 'Debian'
+    - inventory_hostname in groups["worker"]
+  tags:
+    - setup-cluster
+    - join-workers
+  block:
+    - name: Install RKE2 to worker nodes
+      shell: "curl -sfL https://get.rke2.io | INSTALL_RKE2_CHANNEL={{ rke2_version | default('stable') }} INSTALL_RKE2_TYPE=agent sh -"
+
+    - copy:
+        src: /tmp/rke2_config.yaml
+        dest: /etc/rancher/rke2/config.yaml
+        owner: root
+        group: root
+        mode: '0550'
+
+    - name: Set private registries
+      template:
+        src: ../templates/private-registries.j2
+        dest: /etc/rancher/rke2/registries.yml
+        owner: root
+        group: root
+        mode: '0600'
+      when:
+        - private_registries is defined
+
+    - name: Start RKE2 Agent Service
+      systemd:
+        state: started
+        enabled: yes
+        name: rke2-agent.service
+      timeout: 600
+      register: output
+      until: output.failed == false
+      failed_when: output.failed == true
+      retries: 20
+      delay: 10
+      #ignore_errors: true
+
+#    - debug:
+#        msg: "{{ output }}"

@@ -1,0 +1,69 @@
+---
+- name: Install RKE2 to Masters
+  when:
+    - ansible_os_family == 'Debian'
+    - inventory_hostname == groups["master"][0]
+  tags:
+    - setup-cluster
+    - init-rke2
+  block:
+    - name: Install RKE2 to first master node
+      shell: "curl -sfL https://get.rke2.io | INSTALL_RKE2_CHANNEL={{ rke2_version | default('stable') }} sh -"
+
+    - lineinfile:
+        path: /etc/rancher/rke2/config.yaml
+        line: "tls-san: [{{ subject_alt_name }}]"
+      when: subject_alt_name is defined
+    
+    - name: Set private registries
+      template:
+        src: ../templates/private-registries.j2
+        dest: /etc/rancher/rke2/registries.yml
+        owner: root
+        group: root
+        mode: '0600'
+      when:
+        - private_registries is defined
+
+    - name: Start RKE2 Server Service
+      systemd:
+        state: started
+        enabled: yes
+        name: rke2-server.service
+      timeout: 600
+      register: output
+      until: output.failed == false
+      failed_when: output.failed == true
+      retries: 20
+      delay: 10
+      #ignore_errors: true
+
+#    - debug:
+#        msg: "{{ output }}"
+
+    - name: Wait for RKE2 Service
+      pause:
+        seconds: 15
+
+    - copy:
+        remote_src: True
+        dest: /root/.kube/config
+        src: /etc/rancher/rke2/rke2.yaml
+        owner: root
+        group: root
+        mode: '0500'
+
+    - name: Fetch kube_config to localhost
+      fetch:
+        src: /root/.kube/config
+        dest: /tmp/kube_config
+        flat: yes
+
+    - name: Create config.yaml
+      shell: "echo server: https://{{ ansible_host }}:9345 > /var/lib/rancher/rke2/server/config.yaml; \
+             echo token: $(cat /var/lib/rancher/rke2/server/node-token) >> /var/lib/rancher/rke2/server/config.yaml"
+
+    - fetch:
+        src: /var/lib/rancher/rke2/server/config.yaml
+        dest: /tmp/rke2_config.yaml
+        flat: yes

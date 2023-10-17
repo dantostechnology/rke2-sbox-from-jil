@@ -1,0 +1,124 @@
+---
+- name: Prepare Hosts - Stage 1
+  when:
+    - ansible_os_family == 'Debian'
+    - inventory_hostname in groups["rke2_cluster"]
+  tags:
+    - setup-cluster
+    - prepare-hosts-stage-1
+  block:
+    - name: Set hostnames
+      hostname:
+        name: "{{ inventory_hostname }}"
+      when:
+        - change_hostnames is defined
+        - change_hostnames == true
+
+    - setup:
+        filter:
+          - 'ansible_distribution'
+          - 'ansible_hostname'
+
+    - name: Append nodes to hosts file
+      lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.[01]\.[01] {{ ansible_hostname }}$'
+        state: absent
+      
+    - lineinfile:
+        path: /etc/hosts
+        line: "{{ hostvars[item]['ansible_default_ipv4']['address'] }} {{ item }}"
+      with_items: "{{ groups['rke2_cluster'] }}"
+
+    - name: Disable Swap permanently
+      shell: swapoff -a
+    
+    - replace:
+        path: /etc/fstab
+        regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+        replace: '# \1'
+    
+    - name: Load required modules
+      community.general.modprobe:
+        name: "{{ item }}"
+        state: present
+      with_items: "{{ required_modules | default(omit) }}"
+      when:
+        - required_modules is defined
+    
+    - name: Install Apt packages
+      apt:
+        name: "{{ required_apt_packages | default(omit) }}"
+        state: latest
+        update_cache: true
+      when:
+        - required_apt_packages is defined
+    
+    - name: Install Python packages
+      pip:
+        name: "{{ required_pip_packages | default(omit) }}"
+      when:
+        - required_pip_packages is defined
+
+- name: Prepare Hosts - Stage 2
+  when:
+    - ansible_os_family == 'Debian'
+    - inventory_hostname in groups["master"]
+  tags:
+    - setup-cluster
+    - prepare-hosts-stage-2
+  block:
+    - name: Create directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0640'
+      with_items:
+        - /etc/rancher/rke2
+        - /root/.kube
+
+    - name: Create files
+      file:
+        path: /etc/rancher/rke2/config.yaml
+        state: touch
+        owner: root
+        group: root
+        mode: '0600'
+
+    - name: Set .bashrc
+      lineinfile:
+        path: /root/.bashrc
+        line: alias k=/var/lib/rancher/rke2/bin/kubectl
+        create: yes
+
+    - lineinfile:
+        path: /root/.bashrc
+        line: 'source <(kubectl completion bash); complete -F __start_kubectl k'
+        create: yes
+
+    - lineinfile:
+        path: /etc/profile
+        line: export PATH=$PATH:/var/lib/rancher/rke2/bin
+        create: yes
+
+    - shell: "export PATH=$PATH:/var/lib/rancher/rke2/bin"
+
+- name: Prepare Hosts - Stage 3
+  when:
+    - ansible_os_family == 'Debian'
+    - inventory_hostname in groups["worker"]
+  tags:
+    - setup-cluster
+    - prepare-hosts-stage-3
+  block:
+    - name: Create directories
+      file:
+        path: /etc/rancher/rke2
+        state: directory
+        owner: root
+        group: root
+        mode: '0640'
+      with_items:
+        - /etc/rancher/rke2

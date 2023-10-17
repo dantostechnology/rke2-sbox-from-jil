@@ -1,0 +1,19 @@
+change_hostnames: true
+
+rke2_version: v1.23.5+rke2r1 #latest
+
+subject_alt_name: "10.0.1.10, rke2.basitbir.site"
+
+logrotate:
+  rotate: '3'
+  maxsize: '10M'
+
+#private_registries:
+#  nexus.local:
+#    mirrors:
+#      endpoint:
+#        - https://nexus.local
+#    configs:
+#      auth:
+#        username: user
+#        password: pass

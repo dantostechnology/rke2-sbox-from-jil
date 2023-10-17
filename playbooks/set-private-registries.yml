@@ -1,0 +1,7 @@
+- hosts: rke2_cluster
+  name: Destroy RKE2 Cluster
+  gather_facts: false
+  tasks:
+    - name: Prepare Hosts
+      include_tasks: ../roles/rke2/tasks/set-private-registries.yml
+      with_items: "{{ groups['rke2_cluster'] }}"

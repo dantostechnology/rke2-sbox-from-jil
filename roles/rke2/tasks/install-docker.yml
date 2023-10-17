@@ -1,0 +1,37 @@
+---
+- name: Install Docker
+  when:
+    - ansible_os_family == 'Debian'
+    - inventory_hostname in groups["rke2_cluster"]
+  tags:
+    - setup-cluster
+    - install-docker
+  block:
+    - name: Install apt-transport-https
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - lsb-release
+          - gnupg
+        state: present
+        update_cache: true
+
+    - name: Add Docker signing key
+      ansible.builtin.apt_key:
+        url: "{{ docker_repo_key | mandatory }}"
+        state: present
+    
+    - name: Add Docker repository into sources list
+      ansible.builtin.apt_repository:
+        repo: "{{ docker_repo_url | mandatory }}"
+        state: present
+        filename: docker
+    
+    - name: Install Docker
+      ansible.builtin.apt:
+        name: "{{ docker_packages | mandatory }}"
+        state: present
+        update_cache: true
+      when:
+        - docker_packages is defined

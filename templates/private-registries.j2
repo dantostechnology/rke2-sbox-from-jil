@@ -1,0 +1,15 @@
+mirrors:
+  {% for reg in private_registries -%}
+  {{ reg }}:
+    endpoint: {{ private_registries[reg].mirrors.endpoint }}
+
+  {% endfor %}
+
+configs:
+  {% for reg in private_registries -%}
+  {{ reg }}:
+    auth:
+      username: {{ private_registries[reg].configs.auth.username }}
+      password: {{ private_registries[reg].configs.auth.password }}
+
+  {% endfor %}

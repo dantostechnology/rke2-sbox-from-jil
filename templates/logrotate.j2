@@ -1,0 +1,11 @@
+/var/log/pods/*/*/*log {
+    rotate {{ logrotate.rotate | default('3') }}
+    daily
+    dateext
+    maxsize {{ logrotate.maxsize | default('10M') }}
+    missingok
+    compress
+    copytruncate
+    dateformat -%Y%m%d-%s
+    create 0644 root root
+}

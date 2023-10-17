@@ -1,0 +1,32 @@
+---
+- include_tasks: prepare-hosts.yml
+  tags:
+    - setup-cluster
+    - prepare-hosts-stage-1 # Whole of hosts
+    - prepare-hosts-stage-2 # Just Masters
+    - prepare-hosts-stage-3 # Just Workers
+
+- include_tasks: install-docker.yml
+  tags:
+    - setup-cluster
+    - install-docker
+
+- include_tasks: init-rke2.yml
+  tags:
+    - setup-cluster
+    - init-rke2
+
+- include_tasks: join-masters.yml
+  tags:
+    - setup-cluster
+    - join-masters
+
+- include_tasks: join-workers.yml
+  tags:
+    - setup-cluster
+    - join-workers
+
+- include_tasks: finalize.yml
+  tags:
+    - setup-cluster
+    - finalize

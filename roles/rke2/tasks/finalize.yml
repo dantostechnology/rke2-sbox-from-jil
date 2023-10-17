@@ -1,0 +1,26 @@
+---
+- name: Finalize Setup
+  when:
+    - ansible_os_family == 'Debian'
+    - inventory_hostname in groups["rke2_cluster"]
+    - logrotate.rotate is defined
+    - logrotate.maxsize is defined
+  tags:
+    - setup-cluster
+    - finalize
+  block:
+    - name: Create Log Rotate config for RKE2
+      template:
+        src: ../templates/logrotate.j2
+        dest: /etc/logrotate.d/rke2
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Run Log Rotate forcely
+      shell: $(which logrotate) --force /etc/logrotate.d/rke2
+
+    # - name: Install HELMv3
+    #   shell: "curl -sLk raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash"
+    #   when:
+    #     - inventory_hostname in groups["master"]

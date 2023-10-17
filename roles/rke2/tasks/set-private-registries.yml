@@ -1,0 +1,60 @@
+---
+- name: Set private registries
+  copy:
+    src: ../templates/private-registries.j2
+    dest: /etc/rancher/rke2/registries.yml
+    owner: root
+    group: root
+    mode: '0600'
+ 
+- name: Cordon node
+  kubernetes.core.k8s_drain:
+    state: cordon
+    name: "{{ inventory_host }}"
+    force: yes
+     
+- name: Drain node
+  kubernetes.core.k8s_drain:
+    state: drain
+    name: "{{ inventory_host }}"
+    delete_options:
+      terminate_grace_period: 900
+     
+- name: Wait for RKE2 Service
+  pause:
+    seconds: 3
+    
+- name: Restart RKE2 Server Service
+  systemd:
+    state: restarted
+    name: rke2-server.service
+  timeout: 600
+  register: output
+  until: output.state == 'started'
+  retries: 20
+  delay: 10
+  when: inventory_hostname in groups["master"]
+  
+- name: Restart RKE2 Agent Service
+  systemd:
+    state: restarted
+    name: rke2-server.service
+  timeout: 600
+  register: output
+  until: output.state == 'started'
+  retries: 20
+  delay: 10
+  when: inventory_hostname in groups["worker"]    
+     
+- name: Wait for RKE2 Service
+  pause:
+    seconds: 15
+    
+- name: Uncordon node
+  kubernetes.core.k8s_drain:
+    state: uncordon
+    name: "{{ inventory_host }}"
+    
+- name: Wait for RKE2 Service
+  pause:
+    seconds: 5
